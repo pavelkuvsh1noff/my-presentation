@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>IndexedDB</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/styles.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h1 class="main__heading">IndexedDB</h1>
+				</section>
+				<section>
+					<ul>
+						<li class="fragment">Stores almost any kind of values by keys, multiple key types.</li>
+						<li class="fragment">Supports transactions for reliability.</li>
+						<li class="fragment">Supports key range queries, indexes.</li>
+						<li class="fragment">Can store much bigger volumes of data than localStorage.</li>
+					</ul>
+				</section>
+				<section>
+					<h2 class="slide__heading">Open database</h2>
+					<p class="slide__text">To start working with IndexedDB, we first need to open (connect to) a database.</p>
+					<pre class="example">
+						<code class="slide__text">
+							let openRequest = indexedDB.open(name, version);
+						</code>
+						<ul>
+							<li class="slide__text">name – a string, the database name.</д>
+							<li class="slide__text">version – a positive integer version, by default 1 (explained below).</li>
+						</ul>
+					</pre>
+				</section>
+				<section>
+					<ul>
+						<li class="fragment">success: database is ready, there’s the “database object” in openRequest.result, we should use it for further calls.</д>
+						<li class="fragment">error: opening failed.</li>
+						<li class="fragment">upgradeneeded: database is ready, but its version is outdated (see below).</li>
+					</ul>
+				</section>
+				<section>
+					<pre class="example">
+						<p class="slide__text">Our database:</p>
+						<code class="slide__text">
+							const request = indexedDB.open("MyDatabase", 2);
+
+							request.onupgradeneeded = (event) => {
+								const db = event.target.result;
+							};
+
+							request.onsuccess = (event) => {
+								const db = event.target.result;
+							}; 
+
+							request.onerror = (event) => {};
+						</code>
+					</pre>
+				</section>
+				<section>
+					<p class="slide__text">To store something in IndexedDB, we need an object store.</p>
+					<pre class="example">
+						<code class="slide__text">
+							db.createObjectStore(name[, keyOptions]);
+						</code>
+						<ul>
+							<li class="slide__text">name is the store name, e.g. "books" for books,</li>
+							<li class="slide__text">keyOptions is an optional object with one of two properties:
+								<ul>
+									<li class="slide__text">keyPath – a path to an object property that IndexedDB will use as the key, e.g. id.</li>
+									<li class="slide__text">autoIncrement – if true, then the key for a newly stored object is generated automatically, as an ever-incrementing number.</li>
+								</ul>
+							</li>
+						</ul>
+					</pre>
+				</section>
+				<section>
+					<pre class="example">
+						<p class="slide__text">Our database:</p>
+						<code class="slide__text">
+							const request = indexedDB.open("MyDatabase", 2);
+
+							request.onupgradeneeded = (event) => {
+								const db = event.target.result;
+								
+								if (!db.objectStoreNames.contains("users")) {
+									db.createObjectStore("users", { keyPath: "id" });
+								}
+							};
+						</code>
+					</pre>
+				</section>
+				<section>
+					<p class="slide__text">All data operations must be made within a transaction in IndexedDB.</p>
+					<pre class="example">
+						<code class="slide__text">
+							db.transaction(store[, type]);
+						</code>
+						<ul>
+							<li class="slide__text">store is a store name that the transaction is going to access</li>
+							<li class="slide__text">type – a transaction type, one of:
+								<ul>
+									<li class="slide__text">readonly – can only read, the default.</li>
+									<li class="slide__text">readwrite – can only read and write the data, but not create/remove/alter object stores.</li>
+								</ul>
+							</li>
+						</ul>
+					</pre>
+				</section>
+				<section>
+					<p class="slide__text">Object stores support two methods to store a value:</p>
+					<ul>
+						<li class="fragment">put(value, [key]);</li>
+						<li class="fragment">add(value, [key]);</li>
+					</ul>
+				</section>
+				<section>
+					<pre class="example">
+						<p class="slide__text">Our database:</p>
+						<code class="slide__text">
+							function addUser(db, user) {
+								const transaction = db.transaction(["users"], "readwrite");
+								const store = transaction.objectStore("users");
+								const request = store.add(user);
+
+								request.onsuccess = () => console.log("Пользователь добавлен:", user.name);
+								request.onerror = () => console.error("Ошибка добавления:", request.error);
+							}
+						</code>
+						<code class="slide__text">
+							function updateUser(db, user) {
+								const transaction = db.transaction(["users"], "readwrite");
+								const store = transaction.objectStore("users");
+								const request = store.put(user);
+
+								request.onsuccess = () => console.log("Пользователь изменен:", user.name);
+								request.onerror = () => console.error("Ошибка добавления:", request.error);
+							}
+						</code>
+					</pre>
+				</section>
+				<section>
+					<p class="slide__text">There are two main types of search in an object store:</p>
+					<ul>
+						<li class="fragment">By a key value or a key range. In our “books” storage that would be a value or range of values of book.id.</li>
+						<li class="fragment">By another object field, e.g. book.price. This required an additional data structure, named “index”.</li>
+					</ul>
+				</section>
+				<section>
+					<p class="slide__text">To perform the actual search, there are following methods. They accept a query argument that can be either an exact key or a key range:</p>
+					<ul>
+						<li class="fragment">store.get(query);</li>
+						<li class="fragment">store.getAll([query], [count]);</li>
+						<li class="fragment">store.getKey(query);</li>
+						<li class="fragment">store.getAllKeys([query], [count]);</li>
+						<li class="fragment">store.count([query]);</li>
+					</ul>
+				</section>
+				<section>
+					<p class="slide__text">To search by other object fields, we need to create an additional data structure named “index”.</p>
+					<pre class="example">
+						<code class="slide__text">
+							objectStore.createIndex(name, keyPath, [options]);
+						</code>
+						<ul>
+							<li class="slide__text">name – index name</li>
+							<li class="slide__text">keyPath – path to the object field that the index should track</li>
+							<li class="slide__text">option – an optional object with properties:
+								<ul>
+									<li class="slide__text">unique – if true, then there may be only one object in the store with the given value at the keyPath.</li>
+									<li class="slide__text">multiEntry – only used if the value on keyPath is an array.</li>
+								</ul>
+							</li>
+						</ul>
+					</pre>
+				</section>
+				<section>
+					<pre class="example">
+						<p class="slide__text">Our database:</p>
+						<code class="slide__text">
+							function getUser(db, id) {
+								const transaction = db.transaction(["users"], "readonly");
+								const store = transaction.objectStore("users");
+								const request = store.get(id);
+								request.onsuccess = () => {
+									if (request.result) {
+									console.log("Найден пользователь:", request.result);
+									} else {
+									console.log("Пользователь не найден");
+									}
+								};
+								request.onerror = () => console.error("Ошибка поиска:", request.error);
+							}
+						</code>
+					</pre>
+				</section>
+				<section>
+					<pre class="example">
+						<p class="slide__text">Our database:</p>
+						<code class="slide__text">
+							function getAllUsers(db) {
+								const transaction = db.transaction(["users"], "readonly");
+								const store = transaction.objectStore("users");
+								const request = store.getAll();
+								request.onsuccess = () => {
+									if (request.result) {
+									console.log("Найдены пользователи:", request.result);
+									} else {
+									console.log("Пользователь не найден");
+									}
+								};
+								request.onerror = () => console.error("Ошибка поиска:", request.error);
+							}
+						</code>
+					</pre>
+				</section>
+				<section>
+					<p class="slide__text">Methods like getAll/getAllKeys return an array of keys/values.</p>
+					<p class="slide__text">But an object storage can be huge, bigger than the available memory. Then getAll will fail to get all records as an array.</p>
+					<p class="slide__text">Cursors provide the means to work around that.</p>
+				</section>
+				<section>
+					<pre class="example">
+						<code class="slide__text">
+							let request = store.openCursor(query, [direction]);
+						</code>
+						<ul>
+							<li class="slide__text">query is a key or a key range, same as for getAll.</li>
+							<li class="slide__text">direction is an optional argument, which order to use:
+								<ul>
+									<li class="slide__text">"next" – the default, the cursor walks up from the record with the lowest key.</li>
+									<li class="slide__text">"prev" – the reverse order: down from the record with the biggest key.</li>
+									<li class="slide__text">"nextunique", "prevunique" – same as above, but skip records with the same key (only for cursors over indexes, e.g. for multiple books with price=5 only the first one will be returned).</li>
+								</ul>
+							</li>
+						</ul>
+					</pre>
+				</section>
+				<section>
+					<p class="slide__text">The delete method looks up values to delete by a query, the call format is similar to getAll:.</p>
+					<p class="slide__text"><b>delete(query)</b> – delete matching values by query.</p>
+					<pre class="example">
+						<p class="slide__text">Our database:</p>
+						<code class="slide__text">
+							function deleteUser(db, id) {
+								const transaction = db.transaction(["users"], "readwrite");
+								const store = transaction.objectStore("users");
+								const request = store.delete(id);
+
+									request.onsuccess = () => console.log("Пользователь успешно удален");
+								request.onerror = () => console.error("Ошибка удаления пользователя:", request.error);
+							}
+						</code>
+					</pre>
+				</section>
+				<section>
+					<div class="three_column_code">
+						<img src="./2026-02-16_17-33-58.png" width="400px" alt="img1">
+						<img src="./2026-02-16_17-34-55.png" width="400px" alt="img2">
+					</div>
+				</section>
+				<section>
+					<img src="./2026-02-16_17-45-55.png" width="700px" alt="img2">
+				</section>
+				<section>
+					<p class="slide__text">So IndexedDB can be thought of as a “localStorage on steroids”. It’s a simple key-value database, powerful enough for offline apps, yet simple to use.</p>
+					<h2 class="slide__heading">The end.</h2>
+					<p class="slide__text">I hope you enjoy that.</p>
+				</section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+	</body>
+</html>
