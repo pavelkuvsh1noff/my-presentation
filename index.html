@@ -43,9 +43,9 @@
 				</section>
 				<section>
 					<ul>
-						<li class="fragment">success: database is ready, there’s the “database object” in openRequest.result, we should use it for further calls.</д>
+						<li class="fragment">success: database is ready.</li>
 						<li class="fragment">error: opening failed.</li>
-						<li class="fragment">upgradeneeded: database is ready, but its version is outdated (see below).</li>
+						<li class="fragment">upgradeneeded: database is ready, but its version is outdated.</li>
 					</ul>
 				</section>
 				<section>
@@ -73,7 +73,7 @@
 							db.createObjectStore(name[, keyOptions]);
 						</code>
 						<ul>
-							<li class="slide__text">name is the store name, e.g. "books" for books,</li>
+							<li class="slide__text">name is the store name</li>
 							<li class="slide__text">keyOptions is an optional object with one of two properties:
 								<ul>
 									<li class="slide__text">keyPath – a path to an object property that IndexedDB will use as the key, e.g. id.</li>
@@ -151,8 +151,8 @@
 				<section>
 					<p class="slide__text">There are two main types of search in an object store:</p>
 					<ul>
-						<li class="fragment">By a key value or a key range. In our “books” storage that would be a value or range of values of book.id.</li>
-						<li class="fragment">By another object field, e.g. book.price. This required an additional data structure, named “index”.</li>
+						<li class="fragment">By a key value or a key range.</li>
+						<li class="fragment">By another object field. This required an additional data structure, named “index”.</li>
 					</ul>
 				</section>
 				<section>
@@ -221,28 +221,6 @@
 								request.onerror = () => console.error("Ошибка поиска:", request.error);
 							}
 						</code>
-					</pre>
-				</section>
-				<section>
-					<p class="slide__text">Methods like getAll/getAllKeys return an array of keys/values.</p>
-					<p class="slide__text">But an object storage can be huge, bigger than the available memory. Then getAll will fail to get all records as an array.</p>
-					<p class="slide__text">Cursors provide the means to work around that.</p>
-				</section>
-				<section>
-					<pre class="example">
-						<code class="slide__text">
-							let request = store.openCursor(query, [direction]);
-						</code>
-						<ul>
-							<li class="slide__text">query is a key or a key range, same as for getAll.</li>
-							<li class="slide__text">direction is an optional argument, which order to use:
-								<ul>
-									<li class="slide__text">"next" – the default, the cursor walks up from the record with the lowest key.</li>
-									<li class="slide__text">"prev" – the reverse order: down from the record with the biggest key.</li>
-									<li class="slide__text">"nextunique", "prevunique" – same as above, but skip records with the same key (only for cursors over indexes, e.g. for multiple books with price=5 only the first one will be returned).</li>
-								</ul>
-							</li>
-						</ul>
 					</pre>
 				</section>
 				<section>
